@@ -1,0 +1,19 @@
+{
+  "name": "informatica-bot",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "discord.js": "^14.11.0",
+    "dotenv": "^16.3.1",
+    "puppeteer": "^22.10.0"
+  }
+}
