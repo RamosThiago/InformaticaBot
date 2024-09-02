@@ -32,7 +32,7 @@ async function agregarMateria(interaction) {
       } else {
         jsonObject.push({
           serverid: guildid,
-          canal: [],
+          canal: {},
           materias: [{ id: materiaid, name: nombre }],
         });
       }
