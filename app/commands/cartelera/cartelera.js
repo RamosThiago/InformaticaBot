@@ -1,15 +1,14 @@
-import pkg from "discord.js";
-import { fetchAdvertises, materiasData } from "../Fetch/fetchCartelera.js";
-
-const cheerio = await import("cheerio");
-
 const {
+  SlashCommandBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
   EmbedBuilder,
-} = pkg;
+} = require("discord.js");
+const { fetchAdvertises, materiasData } = require("./fetchCartelera.js");
+
+const cheerio = require("cheerio");
 
 async function chargeAdvertises(interaction, pages, time = 60000) {
   try {
@@ -128,7 +127,7 @@ async function chargeAdvertises(interaction, pages, time = 60000) {
   }
 }
 
-export async function displayAdvertises(interaction) {
+async function displayAdvertises(interaction) {
   const id = interaction.options.getString("materia") || "";
   const info = await fetchAdvertises(id);
   const embeds = [];
@@ -211,3 +210,36 @@ export async function displayAdvertises(interaction) {
   }
   await chargeAdvertises(interaction, embeds);
 }
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName("cartelera")
+    .setDescription("Muestra la cartelera general o de una materia")
+    .addStringOption((option) =>
+      option
+        .setName("materia")
+        .setAutocomplete(true)
+        .setDescription("Materia a buscar")
+    ),
+  async autocomplete(interaction) {
+    const value = interaction.options.getFocused().toLowerCase();
+    const filtered = materiasData
+      .filter((materia) => materia.name.toLowerCase().includes(value))
+      .slice(0, 25);
+
+    console.log(filtered);
+
+    if (!interaction) return;
+
+    await interaction.respond(
+      filtered.map((choice) => ({
+        name: choice.name,
+        value: choice.id.toString(),
+      }))
+    );
+  },
+  async execute(interaction) {
+    await interaction.deferReply();
+    await displayAdvertises(interaction);
+  },
+};
