@@ -25,31 +25,16 @@ client.servers = guilds; // Guardo los servidores en guilds.json
 
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Bot ${readyClient.user.tag} iniciado`);
-  /**
-   * @type {{canal: TextChannel, materias: [{name: String, id: Number}]}[]}
-   */
-  const servers = await Promise.all(
-    guilds
-      .filter((x) => x.materias.length != 0)
-      .map(async (x) => {
-        const { serverid, canal: canalId, materias } = x;
-        const server = await client.guilds.fetch(serverid);
-        const canal = await server.channels.fetch(canalId);
-
-        return {
-          canal,
-          materias,
-        };
-      })
-  );
 
   setInterval(async () => {
     const now = new Date();
     const hour = now.getHours();
     if (hour > 0 && hour < 7) return;
 
-    for (let serverInfo of servers) {
-      const { canal, materias } = serverInfo;
+    for (let serverInfo of readyClient.servers) {
+      const { serverid, canal: canalId, materias } = serverInfo;
+      const server = await client.guilds.fetch(serverid);
+      const canal = await server.channels.fetch(canalId);
 
       for (let materia of materias) {
         const lastPost = await fetchAdvertises(materia.id, 1);
