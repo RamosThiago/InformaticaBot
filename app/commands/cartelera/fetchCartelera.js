@@ -110,9 +110,9 @@ const materiasData = [
   { name: "Redictado - Programacion Logica", id: 240 },
 ];
 
-async function fetchAdvertises(id) {
+async function fetchAdvertises(id, amount = 10000) {
   const url =
-    `https://gestiondocente.info.unlp.edu.ar/cartelera/data/0/${10000}?idMateria=` +
+    `https://gestiondocente.info.unlp.edu.ar/cartelera/data/0/${amount}?idMateria=` +
     id;
   const headers = {
     Accept: "*/*",
