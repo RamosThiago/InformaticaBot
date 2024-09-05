@@ -28,7 +28,7 @@ if (!fs.existsSync("./app/guilds.json")) {
 }
 
 const guilds = require("./guilds.json");
-const lastPosts = require("./lastMessage.json");
+const lastDates = require("./lastMessage.json");
 
 dotenv.config();
 
@@ -40,47 +40,13 @@ client.servers = guilds; // Guardo los servidores en guilds.json
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Bot ${readyClient.user.tag} iniciado`);
 
-  const searchNewPosts = async () => {
-    for (let serverInfo of readyClient.servers) {
-      const { serverid, canal: canalId, materias } = serverInfo;
-      const server = await client.guilds.fetch(serverid);
-      const canal = await server.channels.fetch(canalId);
-
-      for (let materia of materias) {
-        const lastPost = await fetchAdvertises(materia.id, 5);
-
-        const isLast = lastPosts[materia.id] === lastPost.mensajes[0].cuerpo;
-
-        if (isLast) continue;
-
-        // Si hay un mensaje nuevo, actualizar el json
-
-        lastPosts[materia.id] = lastPost.mensajes[0].cuerpo; // !
-
-        fs.writeFileSync(
-          "./app/lastMessage.json",
-          JSON.stringify(lastPosts, null, "\t")
-        );
-        await canal.send({
-          embeds: [makeEmbed(lastPost, materia.id)],
-        });
-
-        console.log(
-          `Actualizado ${materia.name} en ${canal.name} (${server.name})`
-        );
-
-        await setTimeout(1000);
-      }
-    }
-  };
-
-  await searchNewPosts();
+  await searchNewPosts(readyClient);
 
   setInterval(async () => {
     const now = new Date();
     const hour = now.getHours();
     if (hour > 0 && hour < 7) return;
-    await searchNewPosts();
+    await searchNewPosts(readyClient);
   }, 3 * 60 * 60 * 1000); // 3 horas
 });
 
@@ -127,8 +93,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 client.login(process.env.TOKEN);
 
-function makeEmbed(info, id) {
-  const [mensaje] = info.mensajes;
+function makeEmbed(mensaje, id) {
   const cuerpoTexto = cheerio.load(mensaje.cuerpo).text();
   let adjuntosTexto = "";
 
@@ -169,3 +134,78 @@ function makeEmbed(info, id) {
 
   return embed;
 }
+
+function convertirFecha(fecha) {
+  if (!fecha) return null;
+  const [dia, mes, año, hora, minuto] = fecha.match(/\d+/g);
+  return new Date(`${año}-${mes}-${dia}T${hora}:${minuto}:00`);
+}
+
+const searchNewPosts = async (readyClient) => {
+  for (let serverInfo of readyClient.servers) {
+    const { serverid, canal: canalId, materias } = serverInfo;
+
+    // Try-catch por si el canal o servidor guardado ya se borro
+    try {
+      const server = await client.guilds.fetch(serverid);
+      const canal = await server.channels.fetch(canalId);
+
+      if (!canalId || materias.length === 0) continue;
+
+      for (let materia of materias) {
+        const lastPosts = await fetchAdvertises(materia.id, 5);
+
+        // Pasa al siguiente si hay un error en fetchAdvertises, si la materia no tiene mensajes o si el mensaje vino sin fecha
+        if (
+          !lastPosts ||
+          !lastPosts.mensajes ||
+          lastPosts.mensajes.length === 0 ||
+          !lastPosts.mensajes[0].fecha
+        )
+          continue;
+
+        const lastPostDate = convertirFecha(lastPosts.mensajes[0].fecha);
+        const previousPostDate = convertirFecha(lastDates[materia.id]);
+
+        const isLast =
+          previousPostDate &&
+          lastPostDate &&
+          previousPostDate.getTime() === lastPostDate.getTime();
+
+        if (isLast) continue;
+
+        // Si hay un mensaje nuevo, actualizar el json
+        lastDates[materia.id] = lastPosts.mensajes[0].fecha;
+
+        fs.writeFileSync(
+          "./app/lastMessage.json",
+          JSON.stringify(lastDates, null, "\t")
+        );
+
+        lastPosts.mensajes.forEach(async (post) => {
+          const actualPostDate = convertirFecha(post.fecha);
+          if (
+            !previousPostDate ||
+            !actualPostDate ||
+            actualPostDate.getTime() > previousPostDate.getTime()
+          ) {
+            await canal.send({
+              embeds: [makeEmbed(post, materia.id)],
+            });
+          }
+        });
+
+        console.log(
+          `Se actualizo ${materia.name} en ${canal.name} (${server.name})`
+        );
+
+        await setTimeout(1000);
+      }
+    } catch (error) {
+      console.error(
+        `Error obteniendo canal o servidor (GuildID ${serverid}): ${error.message}`
+      );
+      continue;
+    }
+  }
+};
