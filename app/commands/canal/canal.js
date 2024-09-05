@@ -1,15 +1,13 @@
 const { SlashCommandBuilder, ChannelType } = require("discord.js");
-const { materiasData } = require("../cartelera/fetchCartelera.js");
-const { readFile, writeFile } = require("node:fs").promises;
+const { writeFile } = require("node:fs").promises;
 
-async function canalActual(interaction) {
+async function canalActual(interaction, client) {
   const guildid = interaction.guildId;
 
   try {
-    const guilds = await readFile("./app/guilds.json", "utf8");
-    const jsonObject = JSON.parse(guilds);
+    const { servers: guilds } = client;
 
-    const server = jsonObject.find((x) => x.serverid === guildid);
+    const server = guilds.find((x) => x.serverid === guildid);
 
     if (server && server.canal) {
       await interaction.editReply(`El canal actual es <#${server.canal}>`);
@@ -25,15 +23,13 @@ async function canalActual(interaction) {
   }
 }
 
-async function agregarCanal(interaction) {
+async function agregarCanal(interaction, client) {
   const canalid = interaction.options.getChannel("canal").id;
   const guildid = interaction.guildId;
 
   try {
-    const guilds = await readFile("./app/guilds.json", "utf8");
-    const jsonObject = JSON.parse(guilds);
-
-    const server = jsonObject.find((x) => x.serverid === guildid);
+    const { servers: guilds } = client;
+    const server = guilds.find((x) => x.serverid === guildid);
 
     if (server) {
       if (server.canal === canalid) {
@@ -45,15 +41,18 @@ async function agregarCanal(interaction) {
         server.canal = canalid;
       }
     } else {
-      jsonObject.push({
+      guilds.push({
         serverid: guildid,
         canal: canalid,
         materias: [],
       });
     }
 
-    const changedJson = JSON.stringify(jsonObject, null, 2);
-    await writeFile("./app/guilds.json", changedJson, "utf8");
+    await writeFile(
+      "./app/guilds.json",
+      JSON.stringify(guilds, null, "\t"),
+      "utf8"
+    );
     await interaction.editReply(`<#${canalid}> es el nuevo canal de anuncios`);
   } catch (error) {
     console.log("Error en el comando agregar canal: " + error);
@@ -62,14 +61,13 @@ async function agregarCanal(interaction) {
   }
 }
 
-async function eliminarCanal(interaction) {
+async function eliminarCanal(interaction, client) {
   const guildid = interaction.guildId;
 
   try {
-    const guilds = await readFile("./app/guilds.json", "utf8");
-    const jsonObject = JSON.parse(guilds);
+    const { servers: guilds } = client;
 
-    const server = jsonObject.find((x) => x.serverid === guildid);
+    const server = guilds.find((x) => x.serverid === guildid);
     let serverBorrado;
 
     if (server && server.canal) {
@@ -82,8 +80,11 @@ async function eliminarCanal(interaction) {
       return;
     }
 
-    const changedJson = JSON.stringify(jsonObject, null, 2);
-    await writeFile("./app/guilds.json", changedJson, "utf8");
+    await writeFile(
+      "./app/guilds.json",
+      JSON.stringify(guilds, null, "\t"),
+      "utf8"
+    );
     await interaction.editReply(
       `Se elimino como canal de anuncios a <#${serverBorrado}>`
     );
@@ -120,17 +121,17 @@ module.exports = {
         .setName("eliminar")
         .setDescription("Eliminar el canal de anuncios")
     ),
-  async execute(interaction) {
+  async execute(interaction, client) {
     await interaction.deferReply();
 
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand === "agregar") {
-      await agregarCanal(interaction);
+      await agregarCanal(interaction, client);
     } else if (subcommand === "eliminar") {
-      await eliminarCanal(interaction);
+      await eliminarCanal(interaction, client);
     } else if (subcommand === "actual") {
-      await canalActual(interaction);
+      await canalActual(interaction, client);
     } else {
       await interaction.editReply({
         content: "Ocurrió un error",

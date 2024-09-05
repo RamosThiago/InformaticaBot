@@ -1,8 +1,9 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, CommandInteraction } = require("discord.js");
 const { materiasData } = require("../cartelera/fetchCartelera.js");
 const { readFile, writeFile } = require("node:fs").promises;
+const guilds = require("../../guilds.json");
 
-async function agregarMateria(interaction) {
+async function agregarMateria(interaction, client) {
   const materiaid = interaction.options.getString("materia");
   const nombre = materiasData.find((m) => m.id == materiaid)
     ? materiasData.find((m) => m.id == materiaid).name
@@ -12,10 +13,9 @@ async function agregarMateria(interaction) {
     const guildid = interaction.guildId;
 
     try {
-      const guilds = await readFile("./app/guilds.json", "utf8");
-      const jsonObject = JSON.parse(guilds);
+      const { servers: guilds } = client;
 
-      const server = jsonObject.find((x) => x.serverid === guildid);
+      const server = guilds.find((x) => x.serverid === guildid);
 
       if (server) {
         const materiaExists = server.materias.some(
@@ -30,15 +30,18 @@ async function agregarMateria(interaction) {
           return;
         }
       } else {
-        jsonObject.push({
+        guilds.push({
           serverid: guildid,
           canal: {},
           materias: [{ id: materiaid, name: nombre }],
         });
       }
 
-      const changedJson = JSON.stringify(jsonObject, null, 2);
-      await writeFile("./app/guilds.json", changedJson, "utf8");
+      await writeFile(
+        "./app/guilds.json",
+        JSON.stringify(guilds, null, "\t"),
+        "utf8"
+      );
       await interaction.editReply(`Se agrego ${nombre} a la lista de materias`);
     } catch (error) {
       console.log("Error en el comando agregar: " + error);
@@ -54,7 +57,7 @@ async function agregarMateria(interaction) {
   }
 }
 
-async function eliminarMateria(interaction) {
+async function eliminarMateria(interaction, client) {
   const materiaid = interaction.options.getString("materia");
   const nombre = materiasData.find((m) => m.id == materiaid)
     ? materiasData.find((m) => m.id == materiaid).name
@@ -64,10 +67,9 @@ async function eliminarMateria(interaction) {
     const guildid = interaction.guildId;
 
     try {
-      const guilds = await readFile("./app/guilds.json", "utf8");
-      const jsonObject = JSON.parse(guilds);
+      const { servers: guilds } = client;
 
-      const server = jsonObject.find((x) => x.serverid === guildid);
+      const server = guilds.find((x) => x.serverid === guildid);
 
       if (server) {
         const materiaIndex = server.materias.findIndex(
@@ -88,8 +90,11 @@ async function eliminarMateria(interaction) {
         return;
       }
 
-      const changedJson = JSON.stringify(jsonObject, null, 2);
-      await writeFile("./app/guilds.json", changedJson, "utf8");
+      await writeFile(
+        "./app/guilds.json",
+        JSON.stringify(guilds, null, "\t"),
+        "utf8"
+      );
       await interaction.editReply(
         `Se elimino ${nombre} de la lista de materias`
       );
@@ -155,17 +160,27 @@ module.exports = {
       }))
     );
   },
-  async execute(interaction) {
+  /**
+   *
+   * @param {CommandInteraction} interaction
+   */
+  async execute(interaction, client) {
     await interaction.deferReply();
 
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand === "agregar") {
-      await agregarMateria(interaction);
+      await agregarMateria(interaction, client);
     } else if (subcommand === "eliminar") {
-      await eliminarMateria(interaction);
+      await eliminarMateria(interaction, client);
     } else if (subcommand === "mostrar") {
-      await interaction.editReply("Lista de materias: 8====D");
+      const server = guilds.find((x) => x.serverid == interaction.guildId);
+      if (server) {
+        const materias = server.materias.map((x) => x.name);
+        await interaction.editReply(
+          `Lista de materias: ${materias.join(", ")}`
+        );
+      }
     }
   },
 };
