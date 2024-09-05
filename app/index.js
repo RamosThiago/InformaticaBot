@@ -13,6 +13,8 @@ const { fetchAdvertises } = require("./commands/cartelera/fetchCartelera");
 const { setTimeout } = require("node:timers/promises");
 const cheerio = require("cheerio");
 
+// Inicializa los archivos json en caso de no estar creados
+
 if (!fs.existsSync("./app/lastMessage.json")) {
   fs.writeFileSync(
     "./app/lastMessage.json",
@@ -38,23 +40,23 @@ client.servers = guilds; // Guardo los servidores en guilds.json
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Bot ${readyClient.user.tag} iniciado`);
 
-  setInterval(async () => {
-    const now = new Date();
-    const hour = now.getHours();
-    if (hour > 0 && hour < 7) return;
-
+  const searchNewPosts = async () => {
     for (let serverInfo of readyClient.servers) {
       const { serverid, canal: canalId, materias } = serverInfo;
       const server = await client.guilds.fetch(serverid);
       const canal = await server.channels.fetch(canalId);
 
       for (let materia of materias) {
-        const lastPost = await fetchAdvertises(materia.id, 1);
+        const lastPost = await fetchAdvertises(materia.id, 5);
+
         const isLast = lastPosts[materia.id] === lastPost.mensajes[0].cuerpo;
+
         if (isLast) continue;
 
         // Si hay un mensaje nuevo, actualizar el json
-        lastPosts[materia.id] = lastPost.mensajes[0].cuerpo;
+
+        lastPosts[materia.id] = lastPost.mensajes[0].cuerpo; // !
+
         fs.writeFileSync(
           "./app/lastMessage.json",
           JSON.stringify(lastPosts, null, "\t")
@@ -62,9 +64,23 @@ client.once(Events.ClientReady, async (readyClient) => {
         await canal.send({
           embeds: [makeEmbed(lastPost, materia.id)],
         });
+
+        console.log(
+          `Actualizado ${materia.name} en ${canal.name} (${server.name})`
+        );
+
         await setTimeout(1000);
       }
     }
+  };
+
+  await searchNewPosts();
+
+  setInterval(async () => {
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour > 0 && hour < 7) return;
+    await searchNewPosts();
   }, 3 * 60 * 60 * 1000); // 3 horas
 });
 
