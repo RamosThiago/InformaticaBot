@@ -11,8 +11,20 @@ const {
 const dotenv = require("dotenv");
 const { fetchAdvertises } = require("./commands/cartelera/fetchCartelera");
 const { setTimeout } = require("node:timers/promises");
-
 const cheerio = require("cheerio");
+
+if (!fs.existsSync("./app/lastMessage.json")) {
+  fs.writeFileSync(
+    "./app/lastMessage.json",
+    JSON.stringify({}, null, "\t"),
+    "utf8"
+  );
+}
+
+if (!fs.existsSync("./app/guilds.json")) {
+  fs.writeFileSync("./app/guilds.json", JSON.stringify([], null, "\t"), "utf8");
+}
+
 const guilds = require("./guilds.json");
 const lastPosts = require("./lastMessage.json");
 
