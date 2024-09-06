@@ -1,16 +1,15 @@
 const fs = require("fs");
 const { setTimeout } = require("timers/promises");
-const fetchPosts = require("../utils/fetchPosts.js");
+const fetchPosts = require("../cartelera/fetchCartelera.js");
 const stringToDate = require("./stringToDate.js");
 const makeEmbed = require("./makeEmbed.js");
-const client = require("../../index.js");
 
 /*
  * Se fija segun cada servidor las materias que tiene configuradas para verificar si hay mensajes
  * nuevos y enviarlos al canal, y actualiza la fecha del ultimo mensaje enviado de esa materia.
  */
 
-const updatePosts = async () => {
+const updatePosts = async (client) => {
   let newDates = { ...client.lastDates };
   let hasChanges = false;
 

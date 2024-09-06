@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord-embed-builder");
+const { EmbedBuilder } = require("discord.js");
 const cheerio = require("cheerio");
 
 function makeEmbed(mensaje, id) {

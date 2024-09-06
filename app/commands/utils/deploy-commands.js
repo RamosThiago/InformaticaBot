@@ -7,10 +7,11 @@ const clientId = process.env.CLIENT_ID;
 const token = process.env.TOKEN;
 
 const commands = [];
-const foldersPath = path.join(__dirname, "commands");
+const foldersPath = path.join(__dirname, "../");
 const commandFolders = fs.readdirSync(foldersPath);
 
 for (const folder of commandFolders) {
+  if (folder === "utils") continue;
   const commandsPath = path.join(foldersPath, folder);
   const commandFiles = fs
     .readdirSync(commandsPath)

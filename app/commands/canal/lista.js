@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, CommandInteraction } = require("discord.js");
-const { materiasData } = require("../cartelera/fetchCartelera.js");
-const { readFile, writeFile } = require("node:fs").promises;
+const materiasData = require("../cartelera/materiasData.json");
+const { writeFile } = require("node:fs").promises;
 const guilds = require("../../guilds.json");
 
 async function agregarMateria(interaction, client) {

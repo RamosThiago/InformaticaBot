@@ -34,13 +34,13 @@ client.lastDates = lastDates;
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Bot ${readyClient.user.tag} iniciado`);
 
-  await updatePosts();
+  await updatePosts(client);
 
   setInterval(async () => {
     const now = new Date();
     const hour = now.getHours();
     if (hour > 0 && hour < 7) return;
-    await updatePosts();
+    await updatePosts(client);
   }, 3 * 60 * 60 * 1000); // 3 horas
 });
 

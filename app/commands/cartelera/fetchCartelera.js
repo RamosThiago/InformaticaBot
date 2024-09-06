@@ -1,4 +1,8 @@
 async function fetchPosts(id, amount = 10000) {
+  if (amount === null) {
+    amount = 10000;
+  }
+
   const url =
     `https://gestiondocente.info.unlp.edu.ar/cartelera/data/0/${amount}?idMateria=` +
     id;
@@ -34,4 +38,4 @@ async function fetchPosts(id, amount = 10000) {
   }
 }
 
-module.exports = { fetchPosts };
+module.exports = fetchPosts;

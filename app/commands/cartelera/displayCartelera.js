@@ -2,11 +2,22 @@ const { EmbedBuilder } = require("discord.js");
 const cheerio = require("cheerio");
 const fetchPosts = require("./fetchCartelera.js");
 const displayPostsEmbed = require("./embedCartelera.js");
-const materiasData = require("./materias.json");
+const materiasData = require("./materiasData.json");
 
 async function displayPosts(interaction) {
   const id = interaction.options.getString("materia") || "";
-  const info = await fetchPosts(id);
+  const numero = interaction.options.getInteger("cantidad") || null;
+  if (
+    numero !== null &&
+    (isNaN(numero) || !Number.isInteger(numero) || numero < 0)
+  ) {
+    return interaction.reply({
+      content: "La cantidad debe ser un numero entero mayor a 0.",
+      ephemeral: true,
+    });
+  }
+  await interaction.deferReply();
+  const info = await fetchPosts(id, numero);
   const embeds = [];
 
   for (let i = 0; i < info.count; i++) {

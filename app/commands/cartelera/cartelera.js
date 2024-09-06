@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const displayPosts = require("./displayCartelera.js");
-const materiasData = require("./materias.json");
+const materiasData = require("./materiasData.json");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -11,6 +11,12 @@ module.exports = {
         .setName("materia")
         .setAutocomplete(true)
         .setDescription("Materia a buscar")
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("cantidad")
+        .setDescription("Cantidad maxima de mensajes a cargar")
+        .setRequired(false)
     ),
   async autocomplete(interaction) {
     const value = interaction.options.getFocused().toLowerCase();
@@ -28,7 +34,6 @@ module.exports = {
     );
   },
   async execute(interaction) {
-    await interaction.deferReply();
     await displayPosts(interaction);
   },
 };
