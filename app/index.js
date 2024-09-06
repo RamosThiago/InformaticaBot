@@ -1,20 +1,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const {
-  Client,
-  Collection,
-  Events,
-  GatewayIntentBits,
-  TextChannel,
-  EmbedBuilder,
-} = require("discord.js");
+const { Client, Collection, Events, GatewayIntentBits } = require("discord.js");
 const dotenv = require("dotenv");
-const { fetchAdvertises } = require("./commands/cartelera/fetchCartelera");
-const { setTimeout } = require("node:timers/promises");
-const cheerio = require("cheerio");
+const updatePosts = require("./commands/utils/updatePosts.js");
+
+dotenv.config();
 
 // Inicializa los archivos json en caso de no estar creados
-
 if (!fs.existsSync("./app/lastMessage.json")) {
   fs.writeFileSync(
     "./app/lastMessage.json",
@@ -30,26 +22,29 @@ if (!fs.existsSync("./app/guilds.json")) {
 const guilds = require("./guilds.json");
 const lastDates = require("./lastMessage.json");
 
-dotenv.config();
-
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
-client.servers = guilds; // Guardo los servidores en guilds.json
 
+// Guardo los servidores y ultimas fechas en el cliente
+client.servers = guilds;
+client.lastDates = lastDates;
+
+// Actualiza las materias al encender el bot y despues cada 3 horas
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Bot ${readyClient.user.tag} iniciado`);
 
-  await searchNewPosts(readyClient);
+  await updatePosts();
 
   setInterval(async () => {
     const now = new Date();
     const hour = now.getHours();
     if (hour > 0 && hour < 7) return;
-    await searchNewPosts(readyClient);
+    await updatePosts();
   }, 3 * 60 * 60 * 1000); // 3 horas
 });
 
+// Carga los comandos en el clienta para poder manejar las interacciones que lleguen
 client.commands = new Collection();
 
 const foldersPath = path.join(__dirname, "commands");
@@ -93,119 +88,4 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 client.login(process.env.TOKEN);
 
-function makeEmbed(mensaje, id) {
-  const cuerpoTexto = cheerio.load(mensaje.cuerpo).text();
-  let adjuntosTexto = "";
-
-  if (mensaje.adjuntos && mensaje.adjuntos.length > 0) {
-    adjuntosTexto = mensaje.adjuntos
-      .map((adj) => `[${adj.nombre}](${adj.public_path})`)
-      .join("\n");
-  }
-
-  const embed = new EmbedBuilder()
-    .setAuthor({
-      name: `${mensaje.materia}`,
-      iconURL: "https://gestiondocente.info.unlp.edu.ar/favicon.png",
-      url: `https://gestiondocente.info.unlp.edu.ar/cartelera/#form[materia]=&${id}`,
-    })
-    .setTitle(
-      `${mensaje.is_anulado ? `~~${mensaje.titulo}~~` : `${mensaje.titulo}`}`
-    )
-    .setDescription(
-      `${
-        mensaje.is_anulado
-          ? `~~${cuerpoTexto} \n\n ${adjuntosTexto}~~`
-          : `${cuerpoTexto} \n\n ${adjuntosTexto}`
-      }`
-    )
-    .setColor("#a30a16")
-    .setFooter({
-      text: `${
-        mensaje.is_anulado
-          ? ` ${`Publicado por ${mensaje.autor.trim()} el ${
-              mensaje.fecha
-            } y anulado el ${new Date(
-              mensaje.fecha_anulacion
-            ).toLocaleDateString()}`}`
-          : `${`Publicado por ${mensaje.autor.trim()} el ${mensaje.fecha}`}`
-      }`,
-    });
-
-  return embed;
-}
-
-function convertirFecha(fecha) {
-  if (!fecha) return null;
-  const [dia, mes, año, hora, minuto] = fecha.match(/\d+/g);
-  return new Date(`${año}-${mes}-${dia}T${hora}:${minuto}:00`);
-}
-
-const searchNewPosts = async (readyClient) => {
-  for (let serverInfo of readyClient.servers) {
-    const { serverid, canal: canalId, materias } = serverInfo;
-
-    // Try-catch por si el canal o servidor guardado ya se borro
-    try {
-      const server = await client.guilds.fetch(serverid);
-      const canal = await server.channels.fetch(canalId);
-
-      if (!canalId || materias.length === 0) continue;
-
-      for (let materia of materias) {
-        const lastPosts = await fetchAdvertises(materia.id, 5);
-
-        // Pasa al siguiente si hay un error en fetchAdvertises, si la materia no tiene mensajes o si el mensaje vino sin fecha
-        if (
-          !lastPosts ||
-          !lastPosts.mensajes ||
-          lastPosts.mensajes.length === 0 ||
-          !lastPosts.mensajes[0].fecha
-        )
-          continue;
-
-        const lastPostDate = convertirFecha(lastPosts.mensajes[0].fecha);
-        const previousPostDate = convertirFecha(lastDates[materia.id]);
-
-        const isLast =
-          previousPostDate &&
-          lastPostDate &&
-          previousPostDate.getTime() === lastPostDate.getTime();
-
-        if (isLast) continue;
-
-        // Si hay un mensaje nuevo, actualizar el json
-        lastDates[materia.id] = lastPosts.mensajes[0].fecha;
-
-        fs.writeFileSync(
-          "./app/lastMessage.json",
-          JSON.stringify(lastDates, null, "\t")
-        );
-
-        lastPosts.mensajes.forEach(async (post) => {
-          const actualPostDate = convertirFecha(post.fecha);
-          if (
-            !previousPostDate ||
-            !actualPostDate ||
-            actualPostDate.getTime() > previousPostDate.getTime()
-          ) {
-            await canal.send({
-              embeds: [makeEmbed(post, materia.id)],
-            });
-          }
-        });
-
-        console.log(
-          `Se actualizo ${materia.name} en ${canal.name} (${server.name})`
-        );
-
-        await setTimeout(1000);
-      }
-    } catch (error) {
-      console.error(
-        `Error obteniendo canal o servidor (GuildID ${serverid}): ${error.message}`
-      );
-      continue;
-    }
-  }
-};
+module.exports = client;
