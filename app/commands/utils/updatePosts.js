@@ -11,6 +11,9 @@ const client = require("../../index.js");
  */
 
 const updatePosts = async () => {
+  let newDates = { ...client.lastDates };
+  let hasChanges = false;
+
   for (let serverInfo of client.servers) {
     const { serverid, canal: canalId, materias } = serverInfo;
 
@@ -43,12 +46,8 @@ const updatePosts = async () => {
         if (isLast) continue;
 
         // Se actualiza la ultima fecha en el json y en el cliente
-        client.lastDates[materia.id] = lastPosts.mensajes[0].fecha;
-
-        fs.writeFileSync(
-          "./app/lastMessage.json",
-          JSON.stringify(client.lastDates, null, "\t")
-        );
+        newDates[materia.id] = lastPosts.mensajes[0].fecha;
+        hasChanges = true;
 
         // Obtengo los posts que esten despues de la anterior fecha que estaba guardada
         const newPosts = [];
@@ -82,6 +81,16 @@ const updatePosts = async () => {
       );
       continue;
     }
+  }
+
+  // Actualizo el JSON y el cliente solo si hubo cambios
+  if (hasChanges) {
+    fs.writeFileSync(
+      "./app/lastMessage.json",
+      JSON.stringify(newDates, null, "\t"),
+      "utf8"
+    );
+    client.lastDates = newDates;
   }
 };
 
