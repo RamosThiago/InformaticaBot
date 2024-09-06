@@ -49,17 +49,21 @@ const updatePosts = async () => {
         newDates[materia.id] = lastPosts.mensajes[0].fecha;
         hasChanges = true;
 
-        // Obtengo los posts que esten despues de la anterior fecha que estaba guardada
         const newPosts = [];
-        for (let post of lastPosts.mensajes) {
-          const actualPostDate = stringToDate(post.fecha);
-          if (
-            !previousPostDate ||
-            !actualPostDate ||
-            actualPostDate.getTime() > previousPostDate.getTime()
-          ) {
-            newPosts.push(post);
+
+        // Si no habia fecha guardada mando solo el ultimo post, si no obtengo los posts que esten despues de previousPostDate
+        if (previousPostDate) {
+          for (let post of lastPosts.mensajes) {
+            const actualPostDate = stringToDate(post.fecha);
+            if (
+              !actualPostDate ||
+              actualPostDate.getTime() > previousPostDate.getTime()
+            ) {
+              newPosts.push(post);
+            }
           }
+        } else {
+          newPosts.push(lastPosts.mensajes[0]);
         }
 
         // Envio los mensajes desde los mas viejos a los mas nuevos
