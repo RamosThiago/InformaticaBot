@@ -180,6 +180,8 @@ module.exports = {
         await interaction.editReply(
           `Lista de materias: ${materias.join(", ")}`
         );
+      } else {
+        await interaction.editReply("No hay materias asignadas en el servidor");
       }
     }
   },
